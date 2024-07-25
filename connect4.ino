@@ -469,13 +469,17 @@ void victory_vertical(int player) {
         if (matrix[current_line][current_col] == player) {
           currentCount++;
           winRow.push_back(current_line);
+
+          
           if (currentCount == 4) {
-            for (int r = 0; r < 4; r++) {
-              M5Cardputer.Speaker.tone(2000, 100);
-              draw_circle_on_grid(winRow[r], current_col, TFT_GREEN);
+            if(checkWinFlag == false){
+              for (int r = 0; r < 4; r++) {
+                M5Cardputer.Speaker.tone(2000, 100);
+                draw_circle_on_grid(winRow[r], current_col, TFT_GREEN);
+              }
+              return;  
             }
             Victory = player;
-            return;  
           }
         } else {
           currentCount = 0;
