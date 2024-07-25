@@ -1,5 +1,3 @@
-//https://github.com/gdantas04/Cardputer-Connect-4/
-
 #include <M5Cardputer.h>
 #include <vector>
 
@@ -198,7 +196,6 @@ bool checkWin(int player) {
     Victory = 0;
     return true;
   }
-  Victory = 0;
   return false;
 }
 
@@ -463,39 +460,32 @@ void victory_horizontal(int player) {
 
 void victory_vertical(int player) {
   if (Victory == 0) {
-    std::vector<int> winRow;
-
     for (int current_col = 0; current_col <= 15; current_col++) {
-      int maxCount = 0;  
       int currentCount = 0;
+      std::vector<int> winRow;
 
       for (int current_line = 0; current_line <= 6; current_line++) {
         
         if (matrix[current_line][current_col] == player) {
           currentCount++;
           winRow.push_back(current_line);
-          if (currentCount > maxCount) {
-              maxCount = currentCount;
+          if (currentCount == 4) {
+            for (int r = 0; r < 4; r++) {
+              M5Cardputer.Speaker.tone(2000, 100);
+              draw_circle_on_grid(winRow[r], current_col, TFT_GREEN);
+            }
+            Victory = player;
+            return;  
           }
         } else {
           currentCount = 0;
           winRow.clear();
         }
       }
-
-      if (maxCount >= 4) {
-        if(checkWinFlag == false){
-          for(int r = 0; r < 4; r++){
-            M5Cardputer.Speaker.tone(2000, 100);
-            draw_circle_on_grid(winRow[r], current_col, TFT_GREEN);
-          }
-        }
-        
-        Victory = player; 
-      } 
     }
   }
 }
+
 
 
 void victory_diagonal_positive(int player) {
