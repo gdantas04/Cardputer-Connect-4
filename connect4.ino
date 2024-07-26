@@ -1,5 +1,6 @@
 #include <M5Cardputer.h>
 #include <vector>
+#include <ctime>
 
 extern const uint8_t grid[];
 extern const uint8_t red_arrow[];
@@ -17,6 +18,7 @@ bool checkWinFlag = false;
 
 int k = -1;
 int DBC = 300; //Debounce
+int DrawDelay = 500;
 int SelectedColumn = 0; 
 int Victory = 0; // 1 = Blue; 2 = Red
 int matrix[7][16]  = {{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
@@ -43,6 +45,7 @@ void setup() {
   {
     M5Cardputer.Display.setRotation(M5Cardputer.Display.getRotation() ^ 1);
   }
+  std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
 }
 
@@ -89,6 +92,14 @@ void loop() {
 // BOT ALGORITHM FUNCTIONS
 
 int getBestMove() {
+
+  // Verify if bot can win
+  for (int col = 0; col < 16; col++) {
+    if (botCanWin(col)) {
+      return col;
+    }
+  }
+
   // Verify if opponent have 3 in sequence
   for (int col = 0; col < 16; col++) {
     if (canBlockOpponent(col)) {
@@ -97,22 +108,36 @@ int getBestMove() {
   }
 
   // Verify if opponent have 2 adjacent pieces
-  for (int col = 0; col < 16; ++col) {
-    if (canBlockTwoAdjacent(col)) {
-      return col;
-    }
+  if (blockTwoAdjacent(2) != -1){
+    return blockTwoAdjacent(2);
   }
-
+  
   // To increase sequence
-  for (int col = 0; col < 16; ++col) {
-    if (canIncreaseSequence(col)) {
-      return col;
-    }
-  }
+  if (IncreaseSequence() != -1){  
+    return IncreaseSequence();
+  } 
 
   // Aleatory movement
   return getRandomMove();
 }
+
+
+// To see if bot can win
+bool botCanWin(int col) {
+  for (int row = 7 - 1; row >= 0; --row) {
+    if (matrix[row][col] == 0) {
+      matrix[row][col] = 1; 
+      bool result = checkWin(1);
+      matrix[row][col] = 0; 
+      if (result){
+        return true;
+      }
+      break;
+    }
+  }
+  return false;
+}
+
 
 // To see if bot can block opponent
 bool canBlockOpponent(int col) {
@@ -130,58 +155,91 @@ bool canBlockOpponent(int col) {
   return false;
 }
 
-// To see if bot can block two adjacent pieces
-bool canBlockTwoAdjacent(int col) {
-  for (int row = 7 - 1; row >= 0; --row) {
-    if (matrix[row][col] == 0) {
-      matrix[row][col] = 2;
-      if (checkTwoAdjacent(2)) {
-        matrix[row][col] = 0;
-        return true;
-      }
-      matrix[row][col] = 0;
-      break;
-    }
-  }
-  return false;
-}
 
 // To see if there are two enemy adjacent pieces
-bool checkTwoAdjacent(int player) {
+int blockTwoAdjacent(int player) {
   for (int row = 7 - 1; row >= 0; --row) {
-    for (int col = 0; col < 16 - 1; ++col) {
-      if (matrix[row][col] == player && matrix[row][col + 1] == player) {
-        return true;
+    for (int col = 0; col < 16; ++col) {
+      if (matrix[row][col-1] == 0 && matrix[row][col] == player && matrix[row][col + 1] == player && matrix[row][col+2] == 0) {
+        return col-1;
       }
     }
   }
-  return false;
+  return -1;
 }
 
-// To increase bot's sequence
-bool canIncreaseSequence(int col) {
-  for (int row = 7 - 1; row >= 0; --row) {
-    if (matrix[row][col] == 0) {
-      matrix[row][col] = 1; 
-      bool result = checkWin(1);
-      matrix[row][col] = 0; 
-      if (result){
-        return true;
+
+// To increase bot sequence
+int IncreaseSequence() {
+  for (int col = 0; col < 16; ++col) {
+    for (int row = 0; row < 7; ++row) {
+      if (matrix[row][col] == 1) {
+        if (col + 1 < 16 && matrix[row][col + 1] == 0) {
+          return (col + 1);
+        }
+        if (col - 1 >= 0 && matrix[row][col - 1] == 0) {
+          return (col - 1);
+        }
+        if (row + 1 < 7 && matrix[row + 1][col] == 0) {
+          return col;
+        }
+        if (row - 1 >= 0) {
+          if (col - 1 >= 0 && matrix[row - 1][col - 1] == 0) {
+            return (col - 1);
+          }
+          if (col + 1 < 16 && matrix[row - 1][col + 1] == 0) {
+            return (col + 1);
+          }
+        }
+        if (row + 1 < 7) {
+          if (col - 1 >= 0 && matrix[row + 1][col - 1] == 0) {
+            return (col - 1);
+          }
+          if (col + 1 < 16 && matrix[row + 1][col + 1] == 0) {
+            return (col + 1);
+          }
+        }
       }
-      break;
     }
   }
-  return false;
+  return -1; 
 }
+
 
 // To generate a random move for the bot
 int getRandomMove() {
-  int col;
-  do {
-      col = std::rand() % 16;
-  } while (matrix[0][col] != 0);
-  return col;
+
+  int leftCount = 0;
+  int rightCount = 0;
+  int num;
+
+  for (int row = 0; row < 7; ++row) {
+    for (int col = 0; col < 16; ++col) {
+      if (matrix[row][col] != 0) {
+        if (col < 8) {
+          leftCount++;
+        } else {
+          rightCount++;
+        }
+      }
+    }
+  }
+
+
+  if (leftCount > rightCount) {
+    do {
+      num = std::rand() % 8;
+    } while (matrix[0][num] != 0);
+    return num;
+
+  }else{
+    do {
+      num = 8 + std::rand() % 8;
+    } while (matrix[0][num] != 0);
+    return num;
+  }  
 }
+
 
 // Used to get results about simulating user actions
 bool checkWin(int player) {
@@ -446,8 +504,9 @@ void victory_horizontal(int player) {
       if (maxCount >= 4) {
 
         if(checkWinFlag == false){
+          M5Cardputer.Speaker.tone(2000, 100);
           for(int c = 0; c < 4;c++){
-            M5Cardputer.Speaker.tone(2000, 100);
+            delay(DrawDelay);
             draw_circle_on_grid(current_line, winCol[c], TFT_GREEN);
           }
         }
@@ -473,8 +532,9 @@ void victory_vertical(int player) {
           
           if (currentCount == 4) {
             if(checkWinFlag == false){
+              M5Cardputer.Speaker.tone(2000, 100);
               for (int r = 0; r < 4; r++) {
-                M5Cardputer.Speaker.tone(2000, 100);
+                delay(DrawDelay);
                 draw_circle_on_grid(winRow[r], current_col, TFT_GREEN);
               } 
             }
@@ -513,8 +573,9 @@ void victory_diagonal_positive(int player) {
 
         if (win) {
           if(checkWinFlag == false){
+            M5Cardputer.Speaker.tone(2000, 100);
             for (auto cell : winCells) {
-              M5Cardputer.Speaker.tone(2000, 100);
+              delay(DrawDelay);
               draw_circle_on_grid(cell.first, cell.second, TFT_GREEN);
             }
           }  
@@ -543,8 +604,9 @@ void victory_diagonal_positive(int player) {
 
         if (win) {
           if(checkWinFlag == false){
+            M5Cardputer.Speaker.tone(2000, 100);
             for (auto cell : winCells) {
-              M5Cardputer.Speaker.tone(2000, 100);
+              delay(DrawDelay);
               draw_circle_on_grid(cell.first, cell.second, TFT_GREEN);
             }
           }
@@ -581,8 +643,9 @@ void victory_diagonal_negative(int player) {
 
         if (win) {
           if(checkWinFlag == false){
+            M5Cardputer.Speaker.tone(2000, 100);
             for (auto cell : winCells) {
-              M5Cardputer.Speaker.tone(2000, 100);
+              delay(DrawDelay);
               draw_circle_on_grid(cell.first, cell.second, TFT_GREEN);
             }
           }
@@ -611,8 +674,9 @@ void victory_diagonal_negative(int player) {
 
         if (win) {
           if(checkWinFlag == false){
+            M5Cardputer.Speaker.tone(2000, 100);
             for (auto cell : winCells) {
-              M5Cardputer.Speaker.tone(2000, 100);
+              delay(DrawDelay);
               draw_circle_on_grid(cell.first, cell.second, TFT_GREEN);
             }
           }
